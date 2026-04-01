@@ -38,3 +38,13 @@ logs/
 *.test
 *.out
 coverage.txt
+
+# Project specific - do not commit
+.claude/
+.obsidian/
+AGENTS.md
+PRD.md
+TECH_DESING.md
+操作步骤.md
+项目结构说明.md
+*.png

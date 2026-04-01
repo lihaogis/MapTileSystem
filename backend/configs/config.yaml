@@ -1,0 +1,23 @@
+server:
+  host: 0.0.0.0
+  port: 8080
+
+database:
+  host: localhost
+  port: 5432
+  user: postgres
+  password: meitu001
+  dbname: map_tile_system
+  sslmode: disable
+
+redis:
+  host: localhost
+  port: 6379
+  password: ""
+  db: 0
+
+log:
+  level: info
+
+tile:
+  storagePath: ./data/tiles

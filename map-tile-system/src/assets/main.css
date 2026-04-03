@@ -2,3 +2,76 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ===== 侧边栏深色主题变量（仅供侧边栏使用） ===== */
+:root {
+  --sidebar-bg: #0d1117;
+  --sidebar-card: rgba(15, 20, 30, 0.9);
+  --sidebar-border: rgba(20, 184, 166, 0.18);
+  --sidebar-text: #e2e8f0;
+  --sidebar-text-muted: rgba(148, 163, 184, 0.8);
+}
+
+/* Element Plus 主题色（保持 teal 主题） */
+:root {
+  --el-color-primary: #0d9488;
+  --el-color-primary-light-3: rgba(13, 148, 136, 0.3);
+  --el-color-primary-light-5: rgba(13, 148, 136, 0.2);
+  --el-color-primary-light-7: rgba(13, 148, 136, 0.12);
+  --el-color-primary-light-8: rgba(13, 148, 136, 0.08);
+  --el-color-primary-light-9: rgba(13, 148, 136, 0.05);
+  --el-color-primary-dark-2: #0f766e;
+}
+
+/* 主题色按钮 */
+.el-button--primary {
+  background: linear-gradient(135deg, #0d9488, #0891b2) !important;
+  border-color: transparent !important;
+}
+.el-button--primary:hover {
+  opacity: 0.88 !important;
+}
+
+/* link 按钮颜色修正（表格操作按钮） */
+.el-button.is-link.el-button--primary {
+  color: #0d9488 !important;
+  background: transparent !important;
+}
+.el-button.is-link.el-button--primary:hover {
+  color: #0f766e !important;
+  opacity: 1 !important;
+}
+.el-button.is-link.el-button--danger {
+  color: #ef4444 !important;
+}
+.el-button.is-link.el-button--danger:hover {
+  color: #dc2626 !important;
+}
+.el-button.is-link.el-button--success {
+  color: #10b981 !important;
+}
+.el-button.is-link.el-button--success:hover {
+  color: #059669 !important;
+}
+.el-button.is-link.el-button--warning {
+  color: #f59e0b !important;
+}
+.el-button.is-link.el-button--warning:hover {
+  color: #d97706 !important;
+}
+
+/* 滚动条 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}

@@ -61,12 +61,12 @@
           <el-input v-model="form.name" placeholder="请输入数据源名称" />
         </el-form-item>
         <el-form-item label="类型" prop="type">
-          <el-select v-model="form.type" placeholder="请选择类型" class="w-full">
-            <el-option label="XYZ" value="xyz" />
+          <el-select v-model="form.type" placeholder="请选择类型" class="w-full" @change="handleTypeChange">
+            <el-option label="XYZ 栅格瓦片" value="xyz" />
             <el-option label="3D Tiles" value="3dtiles" />
           </el-select>
         </el-form-item>
-        <el-form-item label="格式" prop="format">
+        <el-form-item label="格式" prop="format" v-if="form.type === 'xyz'">
           <el-select v-model="form.format" placeholder="请选择格式" class="w-full">
             <el-option label="PNG" value="png" />
             <el-option label="JPG" value="jpg" />
@@ -75,8 +75,15 @@
         </el-form-item>
         <el-form-item label="路径" prop="path">
           <div class="flex gap-2">
-            <el-input v-model="form.path" placeholder="请输入或选择数据源路径" />
+            <el-input
+              v-model="form.path"
+              :placeholder="form.type === 'xyz' ? '选择瓦片目录（包含 {z}/{x}/{y} 结构）' : '选择包含 tileset.json 的目录'"
+            />
             <el-button @click="showPathDialog = true">浏览</el-button>
+          </div>
+          <div class="text-xs text-gray-500 mt-1">
+            <span v-if="form.type === 'xyz'">XYZ 瓦片：选择包含 z/x/y 目录结构的根目录</span>
+            <span v-else>3D Tiles：选择包含 tileset.json 文件的目录</span>
           </div>
         </el-form-item>
         <el-form-item label="状态" prop="status">
@@ -177,20 +184,46 @@ const previewData = ref<DataSource | null>(null)
 const previewUrl = computed(() => {
   if (!previewData.value) return ''
   const token = localStorage.getItem('token') || ''
-  const baseUrl = '/api/preview/tiles'
   if (previewData.value.type === 'xyz') {
-    return `${baseUrl}/${previewData.value.id}/{z}/{x}/{y}?token=${token}`
+    // XYZ 瓦片使用 /api/preview/xyz 路径
+    return `/api/preview/xyz/${previewData.value.id}/{z}/{x}/{y}?token=${token}`
   } else {
-    return `${baseUrl}/${previewData.value.id}/tileset.json?token=${token}`
+    // 3D Tiles 使用 /api/preview/3dtiles 路径
+    return `/api/preview/3dtiles/${previewData.value.id}/tileset.json?token=${token}`
   }
 })
 
 const formRules: FormRules = {
   name: [{ required: true, message: '请输入数据源名称', trigger: 'blur' }],
   type: [{ required: true, message: '请选择类型', trigger: 'change' }],
-  format: [{ required: true, message: '请选择格式', trigger: 'change' }],
+  format: [
+    {
+      required: true,
+      message: '请选择格式',
+      trigger: 'change',
+      validator: (_rule, _value, callback) => {
+        // 只有 XYZ 类型才需要验证格式
+        if (form.value.type === 'xyz' && !form.value.format) {
+          callback(new Error('请选择格式'))
+        } else {
+          callback()
+        }
+      }
+    }
+  ],
   path: [{ required: true, message: '请输入路径', trigger: 'blur' }],
   status: [{ required: true, message: '请选择状态', trigger: 'change' }]
+}
+
+// 处理类型切换
+const handleTypeChange = (type: string) => {
+  if (type === '3dtiles') {
+    // 3D Tiles 不需要格式字段，清空格式值
+    form.value.format = ''
+  } else if (type === 'xyz' && !form.value.format) {
+    // XYZ 类型默认 PNG 格式
+    form.value.format = 'png'
+  }
 }
 
 const fetchDataSources = async () => {

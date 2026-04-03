@@ -195,6 +195,10 @@ const copyUrl = (url: string) => {
 }
 
 const getTileUrl = (key: string, dataSourceId: string) => {
+  const ds = dataSourceList.value.find(d => d.id === dataSourceId)
+  if (ds?.type === '3dtiles') {
+    return `http://localhost:8080/tiles/${dataSourceId}/tileset.json?key=${key}`
+  }
   return `http://localhost:8080/tiles/${dataSourceId}/{z}/{x}/{y}?key=${key}`
 }
 

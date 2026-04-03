@@ -155,11 +155,21 @@ func (h *Handler) GetStatisticsDetails(c *gin.Context) {
 		query = query.Where("call_logs.created_at <= ?", endDate)
 	}
 
+	pageNum, _ := strconv.Atoi(page)
+	pageSizeNum, _ := strconv.Atoi(pageSize)
+	if pageNum < 1 {
+		pageNum = 1
+	}
+	if pageSizeNum < 1 {
+		pageSizeNum = 20
+	}
+	offset := (pageNum - 1) * pageSizeNum
+
 	var total int64
 	query.Count(&total)
 
 	var logs []LogWithNames
-	query.Order("call_logs.created_at DESC").Limit(10).Offset(0).Scan(&logs)
+	query.Order("call_logs.created_at DESC").Limit(pageSizeNum).Offset(offset).Scan(&logs)
 
 	c.JSON(http.StatusOK, gin.H{
 		"code": 0,

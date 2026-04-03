@@ -65,7 +65,7 @@
           <el-icon class="text-gray-400"><TrendCharts /></el-icon>
         </div>
       </template>
-      <div ref="chartRef" class="h-80"></div>
+      <div ref="chartRef" style="height: 320px; width: 100%;"></div>
     </el-card>
 
     <el-card class="shadow-md">
@@ -103,6 +103,7 @@ import type { Statistics, ApiKey } from '@/types'
 const chartRef = ref<HTMLElement>()
 const loading = ref(false)
 let chartInstance: echarts.ECharts | null = null
+let resizeHandler: (() => void) | null = null
 
 const stats = ref<Statistics>({
   todayTotal: 0,
@@ -135,23 +136,49 @@ const fetchStatistics = async () => {
 const fetchTrend = async () => {
   try {
     const res: any = await request.get('/api/statistics/trend')
-    if (res.code === 0) {
+    if (res.code === 0 && res.data && res.data.length > 0) {
       const dates = res.data.map((item: any) => item.date)
       const counts = res.data.map((item: any) => item.count)
 
       await nextTick()
-      if (!chartRef.value) return
 
-      if (!chartInstance) {
-        chartInstance = echarts.init(chartRef.value)
-        window.addEventListener('resize', () => chartInstance?.resize())
+      if (!chartRef.value) {
+        console.error('Chart container not found')
+        return
       }
 
+      if (chartInstance) {
+        chartInstance.dispose()
+        chartInstance = null
+      }
+
+      chartInstance = echarts.init(chartRef.value)
+
+      resizeHandler = () => { chartInstance?.resize() }
+      window.addEventListener('resize', resizeHandler)
+
       chartInstance.setOption({
-        tooltip: { trigger: 'axis' },
-        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-        xAxis: { type: 'category', data: dates, boundaryGap: false },
-        yAxis: { type: 'value', minInterval: 1 },
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: { type: 'cross' }
+        },
+        grid: {
+          left: '50px',
+          right: '30px',
+          bottom: '30px',
+          top: '30px'
+        },
+        xAxis: {
+          type: 'category',
+          data: dates,
+          boundaryGap: false,
+          axisLabel: { rotate: 0 }
+        },
+        yAxis: {
+          type: 'value',
+          minInterval: 1,
+          axisLabel: { formatter: '{value}' }
+        },
         series: [{
           name: '请求次数',
           data: counts,
@@ -171,8 +198,11 @@ const fetchTrend = async () => {
           itemStyle: { color: '#3b82f6' }
         }]
       })
+    } else {
+      console.warn('No trend data available')
     }
   } catch (e) {
+    console.error('Failed to fetch trend data:', e)
     ElMessage.error('获取趋势数据失败')
   }
 }
@@ -188,13 +218,17 @@ const fetchTopKeys = async () => {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await nextTick()
   fetchStatistics()
   fetchTrend()
   fetchTopKeys()
 })
 
 onUnmounted(() => {
+  if (resizeHandler) {
+    window.removeEventListener('resize', resizeHandler)
+  }
   chartInstance?.dispose()
   chartInstance = null
 })

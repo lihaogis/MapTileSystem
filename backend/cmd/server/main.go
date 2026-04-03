@@ -133,10 +133,18 @@ func registerRoutes(r *gin.Engine, h *handler.Handler) {
 	}
 
 	// 内部预览瓦片路由（JWT 认证，不记录统计）
-	preview := r.Group("/api/preview/tiles")
-	preview.Use(middleware.PreviewAuthMiddleware())
+	// XYZ 瓦片预览
+	previewXYZ := r.Group("/api/preview/xyz")
+	previewXYZ.Use(middleware.PreviewAuthMiddleware())
 	{
-		preview.GET("/:dataset/:z/:x/:y", h.ServePreviewTile)
+		previewXYZ.GET("/:dataset/:z/:x/:y", h.ServePreviewTile)
+	}
+
+	// 3D Tiles 预览
+	preview3D := r.Group("/api/preview/3dtiles")
+	preview3D.Use(middleware.PreviewAuthMiddleware())
+	{
+		preview3D.GET("/:dataset/*filepath", h.ServePreview3DTileFile)
 	}
 
 	// 瓦片服务路由

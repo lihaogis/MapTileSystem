@@ -52,9 +52,21 @@
             <el-text class="text-sm" truncated>{{ row.dataSourceName || '-' }}</el-text>
           </template>
         </el-table-column>
+        <el-table-column label="请求类型" width="100">
+          <template #default="{ row }">
+            <el-tag :type="getDataSourceType(row.dataSourceId) === '3dtiles' ? 'warning' : 'info'" size="small">
+              {{ getDataSourceType(row.dataSourceId) === '3dtiles' ? '3D Tiles' : 'XYZ' }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="瓦片坐标" width="150">
           <template #default="{ row }">
-            <span class="font-mono text-xs">{{ row.tileZ }}/{{ row.tileX }}/{{ row.tileY }}</span>
+            <span class="font-mono text-xs" v-if="getDataSourceType(row.dataSourceId) === '3dtiles'">
+              tileset.json
+            </span>
+            <span class="font-mono text-xs" v-else>
+              {{ row.tileZ }}/{{ row.tileX }}/{{ row.tileY }}
+            </span>
           </template>
         </el-table-column>
         <el-table-column label="状态码" width="100">
@@ -85,8 +97,8 @@
           :total="total"
           :page-sizes="[10, 20, 50, 100]"
           layout="total, sizes, prev, pager, next, jumper"
-          @size-change="fetchLogs"
-          @current-change="fetchLogs"
+          @size-change="handleSizeChange"
+          @current-change="handlePageChange"
         />
       </div>
     </el-card>
@@ -164,6 +176,17 @@ const fetchDataSources = async () => {
   }
 }
 
+const handleSizeChange = (val: number) => {
+  pageSize.value = val
+  currentPage.value = 1
+  fetchLogs()
+}
+
+const handlePageChange = (val: number) => {
+  currentPage.value = val
+  fetchLogs()
+}
+
 const handleQuery = () => {
   currentPage.value = 1
   fetchLogs()
@@ -176,6 +199,10 @@ const handleReset = () => {
   queryForm.dateRange = null
   currentPage.value = 1
   fetchLogs()
+}
+
+const getDataSourceType = (id: string) => {
+  return dataSources.value.find((ds: any) => ds.id === id)?.type ?? 'xyz'
 }
 
 const formatDate = (date: string) => {

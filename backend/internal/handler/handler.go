@@ -2,8 +2,6 @@ package handler
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"net/http"
 	"map-tile-system/internal/model"
@@ -47,14 +45,16 @@ func (h *Handler) Login(c *gin.Context) {
 	lockKey := fmt.Sprintf("login_lock:%s", req.Username)
 	failKey := fmt.Sprintf("login_fail:%s", req.Username)
 
-	// 检查是否被锁定
-	locked, err := h.rdb.Get(ctx, lockKey).Result()
-	if err == nil && locked == "1" {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    1,
-			"message": "登录失败次数过多，请30分钟后再试",
-		})
-		return
+	// 检查是否被锁定（Redis 不可用时跳过）
+	if h.rdb != nil {
+		locked, err := h.rdb.Get(ctx, lockKey).Result()
+		if err == nil && locked == "1" {
+			c.JSON(http.StatusOK, gin.H{
+				"code":    1,
+				"message": "登录失败次数过多，请30分钟后再试",
+			})
+			return
+		}
 	}
 
 	// 查询用户
@@ -75,33 +75,39 @@ func (h *Handler) Login(c *gin.Context) {
 		return
 	}
 
-	// 验证密码（前端已SHA256加密）
-	hashedPassword := sha256.Sum256([]byte(user.Password))
-	expectedPassword := hex.EncodeToString(hashedPassword[:])
+	// 验证密码（前端已SHA256加密，数据库存储的也是SHA256，直接比较）
+	if req.Password != user.Password {
+		if h.rdb != nil {
+			// 增加失败次数
+			failCount, _ := h.rdb.Incr(ctx, failKey).Result()
+			h.rdb.Expire(ctx, failKey, 30*time.Minute)
 
-	if req.Password != expectedPassword {
-		// 增加失败次数
-		failCount, _ := h.rdb.Incr(ctx, failKey).Result()
-		h.rdb.Expire(ctx, failKey, 30*time.Minute)
+			if failCount >= 5 {
+				h.rdb.Set(ctx, lockKey, "1", 30*time.Minute)
+				c.JSON(http.StatusOK, gin.H{
+					"code":    1,
+					"message": "登录失败次数过多，账户已锁定30分钟",
+				})
+				return
+			}
 
-		if failCount >= 5 {
-			h.rdb.Set(ctx, lockKey, "1", 30*time.Minute)
 			c.JSON(http.StatusOK, gin.H{
 				"code":    1,
-				"message": "登录失败次数过多，账户已锁定30分钟",
+				"message": fmt.Sprintf("用户名或密码错误，还可尝试%d次", 5-failCount),
 			})
-			return
+		} else {
+			c.JSON(http.StatusOK, gin.H{
+				"code":    1,
+				"message": "用户名或密码错误",
+			})
 		}
-
-		c.JSON(http.StatusOK, gin.H{
-			"code":    1,
-			"message": fmt.Sprintf("用户名或密码错误，还可尝试%d次", 5-failCount),
-		})
 		return
 	}
 
 	// 登录成功，清除失败记录
-	h.rdb.Del(ctx, failKey)
+	if h.rdb != nil {
+		h.rdb.Del(ctx, failKey)
+	}
 
 	// 生成 token
 	token := utils.GenerateToken(user.ID)

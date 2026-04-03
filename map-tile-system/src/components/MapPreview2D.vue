@@ -1,10 +1,6 @@
 <template>
   <div class="relative w-full h-full">
     <div ref="mapContainer" class="w-full h-full"></div>
-    <div class="absolute bottom-6 left-4 bg-white/90 px-3 py-2 rounded shadow text-xs font-mono z-[1000] pointer-events-none">
-      <div>级别: {{ currentZoom }}</div>
-      <div>坐标: {{ mouseCoords }}</div>
-    </div>
   </div>
 </template>
 
@@ -25,11 +21,29 @@ const mapContainer = ref<HTMLElement>()
 const currentZoom = ref(1)
 const mouseCoords = ref('---, ---')
 let map: L.Map | null = null
+let infoControl: L.Control | null = null
+
+const makeErrorTileUrl = () => {
+  const size = 256
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')!
+  ctx.fillStyle = '#f0f0f0'
+  ctx.fillRect(0, 0, size, size)
+  ctx.strokeStyle = '#ddd'
+  ctx.strokeRect(0, 0, size, size)
+  ctx.fillStyle = '#999'
+  ctx.font = '13px sans-serif'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText('此区域暂无地图', size / 2, size / 2)
+  return canvas.toDataURL()
+}
 
 const initMap = () => {
   if (!mapContainer.value) return
 
-  // 使用数据源配置或默认值（北京，zoom 1）
   const center: [number, number] = [
     props.centerLat ?? 39.9,
     props.centerLng ?? 116.4
@@ -40,34 +54,56 @@ const initMap = () => {
     center,
     zoom,
     minZoom: 0,
-    maxZoom: 18
+    maxZoom: 18,
+    attributionControl: false,
+    zoomControl: true,
   })
 
   currentZoom.value = zoom
 
+  // 自定义信息控件，固定在左下角
+  const InfoControl = L.Control.extend({
+    options: { position: 'bottomleft' },
+    onAdd() {
+      const div = L.DomUtil.create('div', '')
+      div.style.cssText = 'background:rgba(255,255,255,0.9);padding:4px 8px;border-radius:4px;font:12px monospace;line-height:1.6;pointer-events:none;box-shadow:0 1px 4px rgba(0,0,0,0.2)'
+      div.id = 'map-info-control'
+      return div
+    }
+  })
+  infoControl = new InfoControl()
+  infoControl.addTo(map)
+
+  const updateInfo = () => {
+    const el = document.getElementById('map-info-control')
+    if (el) {
+      el.innerHTML = `级别: ${currentZoom.value}<br>坐标: ${mouseCoords.value}`
+    }
+  }
+
   L.tileLayer(props.url, {
     maxZoom: 18,
-    attribution: '© Map Tile System'
+    errorTileUrl: makeErrorTileUrl(),
+    crossOrigin: true
   }).addTo(map)
 
-  // 监听缩放变化
   map.on('zoomend', () => {
     if (map) currentZoom.value = map.getZoom()
+    updateInfo()
   })
 
-  // 监听鼠标移动
   map.on('mousemove', (e: L.LeafletMouseEvent) => {
-    const lat = e.latlng.lat.toFixed(6)
-    const lng = e.latlng.lng.toFixed(6)
-    mouseCoords.value = `${lat}, ${lng}`
+    mouseCoords.value = `${e.latlng.lat.toFixed(6)}, ${e.latlng.lng.toFixed(6)}`
+    updateInfo()
   })
 
-  // 鼠标离开地图
   map.on('mouseout', () => {
     mouseCoords.value = '---, ---'
+    updateInfo()
   })
 
-  // 延迟修正地图尺寸，确保容器已完全渲染
+  updateInfo()
+
   nextTick(() => {
     setTimeout(() => {
       if (map) map.invalidateSize()
@@ -89,6 +125,7 @@ onUnmounted(() => {
 watch(() => props.url, () => {
   if (map) {
     map.remove()
+    map = null
   }
   initMap()
 })

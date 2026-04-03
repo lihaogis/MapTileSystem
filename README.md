@@ -13,28 +13,30 @@
 
 ### 2. 授权管理
 - API Key 生成和管理
-- 数据源权限精细控制
+- 数据源权限精细控制（可绑定多个数据源）
 - IP 白名单限制
 - Referer 白名单限制
 - 调用次数统计
+- 自动生成对应格式的访问 URL（XYZ/3D Tiles）
 
 ### 3. 访问日志
-- 完整的瓦片请求日志记录
+- 完整的瓦片请求日志记录（含 XYZ 和 3D Tiles）
+- 请求类型标识（XYZ / 3D Tiles）
 - 按 API Key、数据源、IP、时间筛选
 - 显示响应时间和状态码
-- 180天明细数据保留
-- 永久聚合统计数据
+- 分页浏览，支持自定义每页条数
+- 180 天明细数据保留，永久聚合统计
 
 ### 4. 仪表盘
-- 今日/昨日/本月调用统计
+- 今日 / 昨日 / 本月调用统计
 - 全部累计调用次数
-- 近7天请求趋势图表
+- 近 7 天请求趋势图表
 - Top 5 API Key 排行
 - 实时数据可视化
 
 ### 5. 安全特性
 - 登录密码 SHA256 加密传输
-- 连续登录失败5次锁定30分钟
+- 连续登录失败 5 次锁定 30 分钟
 - JWT Token 认证
 - Redis 会话管理
 - 预览功能独立认证（不计入统计）
@@ -47,35 +49,37 @@
 │   ├── src/
 │   │   ├── api/              # API 接口
 │   │   ├── assets/           # 静态资源
-│   │   ├── components/       # 组件
+│   │   ├── components/       # 组件（MapPreview2D / MapPreview3D）
 │   │   ├── router/           # 路由
 │   │   ├── stores/           # 状态管理
 │   │   ├── types/            # 类型定义
 │   │   ├── utils/            # 工具函数
 │   │   └── views/            # 页面视图
-│   ├── package.json
-│   └── README.md
+│   │       ├── dashboard/    # 仪表盘
+│   │       ├── datasource/   # 数据源管理
+│   │       ├── auth/         # 授权管理
+│   │       ├── access-log/   # 访问日志
+│   │       └── statistics/   # 统计报表
+│   ├── vite.config.ts
+│   └── package.json
 │
 ├── backend/                  # 后端项目（Go + Gin）
 │   ├── cmd/
 │   │   └── server/           # 主程序入口
 │   ├── internal/
 │   │   ├── handler/          # HTTP 处理器
-│   │   ├── middleware/       # 中间件
-│   │   ├── model/            # 数据模型
-│   │   ├── service/          # 业务逻辑
-│   │   └── repository/       # 数据访问
+│   │   ├── middleware/       # 中间件（JWT / API Key 鉴权）
+│   │   └── model/            # 数据模型
 │   ├── pkg/
 │   │   ├── config/           # 配置管理
-│   │   ├── database/         # 数据库
+│   │   ├── database/         # 数据库初始化
 │   │   ├── logger/           # 日志
+│   │   ├── scheduler/        # 定时任务
 │   │   └── utils/            # 工具
 │   ├── configs/              # 配置文件
-│   ├── go.mod
-│   └── README.md
+│   └── go.mod
 │
 ├── PRD.md                    # 产品需求文档
-├── AGENTS.md                 # 开发规范
 └── README.md                 # 项目说明
 ```
 
@@ -83,160 +87,106 @@
 
 ### 前端
 - Vue 3 + TypeScript + Composition API
-- Element Plus (UI 组件库)
-- Tailwind CSS (样式框架)
-- ECharts (数据可视化)
-- Leaflet (2D 地图预览)
-- Axios (HTTP 客户端)
-- Crypto-js (密码加密)
+- Element Plus（UI 组件库）
+- Tailwind CSS（样式框架）
+- ECharts（数据可视化）
+- Leaflet（2D 地图预览）
+- Cesium（3D 地图预览）
+- vite-plugin-cesium（Cesium Vite 集成）
+- Axios（HTTP 客户端）
+- Crypto-js（密码加密）
 
 ### 后端
 - Go 1.21+
-- Gin (Web 框架)
-- GORM (ORM)
-- PostgreSQL (数据库)
-- Redis (缓存/会话)
-- 定时任务调度器
+- Gin（Web 框架）
+- GORM（ORM）
+- PostgreSQL（数据库）
+- Redis（缓存 / 会话 / 登录限流）
+- 定时任务调度器（每日日志汇总与清理）
 
 ## 快速开始
 
 ### 环境要求
-- Node.js 16+
+- Node.js 20+
 - Go 1.21+
 - PostgreSQL 12+
 - Redis 6+
 
-### 前端开发
+### 前端
 
 ```bash
-# 进入前端目录
 cd map-tile-system
 
-# 安装依赖
 npm install
 
-# 启动开发服务器
 npm run dev
-
 # 访问 http://localhost:5173
 ```
 
-### 后端开发
+### 后端
 
 ```bash
-# 进入后端目录
 cd backend
 
-# 安装 Go 依赖
 go mod download
 
-# 配置数据库
-# 1. 创建数据库: CREATE DATABASE map_tile_system;
-# 2. 创建 Redis 实例
+# 修改 configs/config.yaml 配置数据库和 Redis 连接
 
-# 修改配置文件 configs/config.yaml
-# 配置数据库连接、Redis 连接等
-
-# 启动后端服务
 go run cmd/server/main.go
-
 # 服务运行在 http://localhost:8080
 ```
 
 ### 默认账户
-- 用户名: `admin`
-- 密码: `admin123`
-
-## 功能模块
-
-### 1. 用户认证
-- 管理员登录
-- JWT Token 认证
-
-### 2. 数据源管理
-- XYZ 栅格瓦片管理
-- 3D Tiles 数据源管理
-- 数据源启用/禁用
-
-### 3. 授权管理
-- API Key 生成和管理
-- 数据源权限绑定
-- IP 白名单
-- Referer 白名单
-
-### 4. 瓦片服务
-- XYZ 瓦片服务 (`/tiles/:dataset/:z/:x/:y`)
-- 3D Tiles 服务 (`/tiles/:dataset/tileset.json`)
-- API Key 鉴权
-
-### 5. 统计报表
-- 今日/昨日/本月调用统计
-- 调用趋势图表
-- Top Key 排行
-- 调用明细导出
+- 用户名：`admin`
+- 密码：`admin123`
 
 ## API 接口
 
 ### 认证
-- `POST /api/auth/login` - 登录
+- `POST /api/auth/login` — 登录
 
 ### 数据源
-- `GET /api/datasources` - 获取列表
-- `POST /api/datasources` - 创建
-- `PUT /api/datasources/:id` - 更新
-- `DELETE /api/datasources/:id` - 删除
+- `GET    /api/datasources` — 获取列表
+- `POST   /api/datasources` — 创建
+- `PUT    /api/datasources/:id` — 更新
+- `DELETE /api/datasources/:id` — 删除
 
 ### API Key
-- `GET /api/apikeys` - 获取列表
-- `POST /api/apikeys` - 创建
-- `PUT /api/apikeys/:id` - 更新
-- `DELETE /api/apikeys/:id` - 删除
+- `GET    /api/apikeys` — 获取列表
+- `POST   /api/apikeys` — 创建
+- `PUT    /api/apikeys/:id` — 更新
+- `DELETE /api/apikeys/:id` — 删除
 
 ### 统计
-- `GET /api/statistics/overview` - 概览
-- `GET /api/statistics/trend` - 趋势
-- `GET /api/statistics/details` - 明细
+- `GET /api/statistics/overview` — 概览
+- `GET /api/statistics/trend` — 近 7 天趋势
+- `GET /api/statistics/details` — 访问日志明细（分页）
+- `GET /api/statistics/top-keys` — Top 5 API Key
 
-### 瓦片服务
-- `GET /tiles/:dataset/:z/:x/:y` - XYZ 瓦片
-- `GET /tiles/:dataset/tileset.json` - 3D Tiles
+### 瓦片服务（需携带 `?key=` 参数）
+- `GET /tiles/:dataset/:z/:x/:y` — XYZ 瓦片
+- `GET /tiles/:dataset/tileset.json` — 3D Tiles 入口
+- `GET /tiles/:dataset/3dtiles/*filepath` — 3D Tiles 子文件
+
+### 内部预览（JWT 认证，不计入统计）
+- `GET /api/preview/xyz/:dataset/:z/:x/:y` — XYZ 预览
+- `GET /api/preview/3dtiles/:dataset/*filepath` — 3D Tiles 预览
 
 ## 部署
 
-### Docker 部署
-
-```bash
-# 构建前端
-cd map-tile-system
-npm run build
-
-# 构建后端
-cd ../backend
-docker build -t map-tile-system-backend .
-
-# 运行
-docker run -p 8080:8080 map-tile-system-backend
-```
-
 ### 生产部署
 
-1. 前端构建并部署到 Nginx
-2. 后端编译并使用 systemd 管理
+1. 前端构建并部署到 Nginx：
+   ```bash
+   cd map-tile-system && npm run build
+   ```
+2. 后端编译：
+   ```bash
+   cd backend && go build -o map-tile-system cmd/server/main.go
+   ```
 3. 配置 PostgreSQL 和 Redis
-4. 配置 Nginx 反向代理
-
-## 开发规范
-
-- 使用 TypeScript 确保类型安全
-- 组件使用函数式组件 + Hooks
-- 使用 Tailwind CSS 编写样式
-- 遵循 ESLint 和 Prettier 规范
-- Go 代码遵循标准格式化规范
+4. 配置 Nginx 反向代理（将 `/api` 和 `/tiles` 代理到后端 8080 端口）
 
 ## 许可证
 
 MIT License
-
-## 贡献
-
-欢迎提交 Issue 和 Pull Request。

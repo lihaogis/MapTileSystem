@@ -54,9 +54,9 @@
         </el-table-column>
         <el-table-column label="请求类型" width="100">
           <template #default="{ row }">
-            <el-tag :type="getDataSourceType(row.dataSourceId) === '3dtiles' ? 'warning' : 'info'" size="small">
-              {{ getDataSourceType(row.dataSourceId) === '3dtiles' ? '3D Tiles' : 'XYZ' }}
-            </el-tag>
+            <el-tag v-if="getDataSourceType(row.dataSourceId) === '3dtiles'" type="warning" size="small">3D Tiles</el-tag>
+            <el-tag v-else-if="getDataSourceType(row.dataSourceId) === 'vector'" type="success" size="small">Vector</el-tag>
+            <el-tag v-else type="info" size="small">XYZ</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="瓦片坐标" width="150">

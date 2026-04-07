@@ -15,8 +15,8 @@
         <el-table-column prop="name" label="名称" />
         <el-table-column prop="type" label="类型" width="120">
           <template #default="{ row }">
-            <el-tag :type="row.type === 'xyz' ? 'success' : 'primary'">
-              {{ row.type.toUpperCase() }}
+            <el-tag :type="row.type === 'xyz' ? 'success' : row.type === 'vector' ? 'warning' : 'primary'">
+              {{ row.type === 'vector' ? 'VECTOR' : row.type.toUpperCase() }}
             </el-tag>
           </template>
         </el-table-column>
@@ -63,26 +63,29 @@
         <el-form-item label="类型" prop="type">
           <el-select v-model="form.type" placeholder="请选择类型" class="w-full" @change="handleTypeChange">
             <el-option label="XYZ 栅格瓦片" value="xyz" />
+            <el-option label="矢量瓦片 (JSON)" value="vector" />
             <el-option label="3D Tiles" value="3dtiles" />
           </el-select>
         </el-form-item>
-        <el-form-item label="格式" prop="format" v-if="form.type === 'xyz'">
+        <el-form-item label="格式" prop="format" v-if="form.type === 'xyz' || form.type === 'vector'">
           <el-select v-model="form.format" placeholder="请选择格式" class="w-full">
-            <el-option label="PNG" value="png" />
-            <el-option label="JPG" value="jpg" />
-            <el-option label="WebP" value="webp" />
+            <el-option v-if="form.type === 'xyz'" label="PNG" value="png" />
+            <el-option v-if="form.type === 'xyz'" label="JPG" value="jpg" />
+            <el-option v-if="form.type === 'xyz'" label="WebP" value="webp" />
+            <el-option v-if="form.type === 'vector'" label="JSON" value="json" />
           </el-select>
         </el-form-item>
         <el-form-item label="路径" prop="path">
           <div class="flex gap-2">
             <el-input
               v-model="form.path"
-              :placeholder="form.type === 'xyz' ? '选择瓦片目录（包含 {z}/{x}/{y} 结构）' : '选择包含 tileset.json 的目录'"
+              :placeholder="form.type === '3dtiles' ? '选择包含 tileset.json 的目录' : '选择瓦片目录（包含 {z}/{x}/{y} 结构）'"
             />
             <el-button @click="showPathDialog = true">浏览</el-button>
           </div>
           <div class="text-xs text-gray-500 mt-1">
             <span v-if="form.type === 'xyz'">XYZ 瓦片：选择包含 z/x/y 目录结构的根目录</span>
+            <span v-else-if="form.type === 'vector'">矢量瓦片：选择包含 z/x/y 目录结构的根目录（JSON 格式）</span>
             <span v-else>3D Tiles：选择包含 tileset.json 文件的目录</span>
           </div>
         </el-form-item>
@@ -112,7 +115,7 @@
     <el-dialog v-model="previewVisible" :title="`预览 - ${previewData?.name}`" width="80%" top="5vh">
       <div class="h-[70vh]">
         <MapPreview2D
-          v-if="previewData?.type === 'xyz'"
+          v-if="previewData?.type === 'xyz' || previewData?.type === 'vector'"
           :url="previewUrl"
           :format="previewData?.format || 'png'"
           :center-lat="previewData?.centerLat"
@@ -202,8 +205,8 @@ const formRules: FormRules = {
       message: '请选择格式',
       trigger: 'change',
       validator: (_rule, _value, callback) => {
-        // 只有 XYZ 类型才需要验证格式
-        if (form.value.type === 'xyz' && !form.value.format) {
+        // XYZ 和 vector 类型才需要验证格式
+        if ((form.value.type === 'xyz' || form.value.type === 'vector') && !form.value.format) {
           callback(new Error('请选择格式'))
         } else {
           callback()
@@ -223,6 +226,9 @@ const handleTypeChange = (type: string) => {
   } else if (type === 'xyz' && !form.value.format) {
     // XYZ 类型默认 PNG 格式
     form.value.format = 'png'
+  } else if (type === 'vector' && !form.value.format) {
+    // Vector 类型默认 JSON 格式
+    form.value.format = 'json'
   }
 }
 

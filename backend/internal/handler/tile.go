@@ -37,6 +37,11 @@ func (h *Handler) ServePreviewTile(c *gin.Context) {
 		return
 	}
 
+	// 根据数据源类型设置 Content-Type
+	if dataSource.Type == "vector" && dataSource.Format == "json" {
+		c.Header("Content-Type", "application/json")
+	}
+
 	c.File(tilePath)
 }
 
@@ -75,6 +80,11 @@ func (h *Handler) ServeTile(c *gin.Context) {
 		h.logCall(c, apiKey.ID, dataset, z, x, y, http.StatusNotFound, startTime)
 		c.JSON(http.StatusNotFound, gin.H{"error": "瓦片不存在"})
 		return
+	}
+
+	// 根据数据源类型设置 Content-Type
+	if dataSource.Type == "vector" && dataSource.Format == "json" {
+		c.Header("Content-Type", "application/json")
 	}
 
 	h.logCall(c, apiKey.ID, dataset, z, x, y, http.StatusOK, startTime)

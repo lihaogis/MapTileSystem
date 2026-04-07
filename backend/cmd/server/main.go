@@ -140,6 +140,13 @@ func registerRoutes(r *gin.Engine, h *handler.Handler) {
 		previewXYZ.GET("/:dataset/:z/:x/:y", h.ServePreviewTile)
 	}
 
+	// GeoJSON 预览
+	previewGeoJSON := r.Group("/api/preview/geojson")
+	previewGeoJSON.Use(middleware.PreviewAuthMiddleware())
+	{
+		previewGeoJSON.GET("/:dataset", h.ServePreviewGeoJSON)
+	}
+
 	// 3D Tiles 预览
 	preview3D := r.Group("/api/preview/3dtiles")
 	preview3D.Use(middleware.PreviewAuthMiddleware())
@@ -151,6 +158,8 @@ func registerRoutes(r *gin.Engine, h *handler.Handler) {
 	tiles := r.Group("/tiles")
 	tiles.Use(middleware.TileAuthMiddleware())
 	{
+		// GeoJSON 服务
+		tiles.GET("/:dataset/data.geojson", h.ServeGeoJSON)
 		// 3D Tiles 服务（必须在 XYZ 之前注册）
 		tiles.GET("/:dataset/tileset.json", h.ServeTileset)
 		tiles.GET("/:dataset/3dtiles/*filepath", h.Serve3DTiles)

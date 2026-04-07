@@ -55,7 +55,7 @@
         <el-table-column label="请求类型" width="100">
           <template #default="{ row }">
             <el-tag v-if="getDataSourceType(row.dataSourceId) === '3dtiles'" type="warning" size="small">3D Tiles</el-tag>
-            <el-tag v-else-if="getDataSourceType(row.dataSourceId) === 'vector'" type="success" size="small">Vector</el-tag>
+            <el-tag v-else-if="getDataSourceType(row.dataSourceId) === 'vector'" type="success" size="small">GeoJSON</el-tag>
             <el-tag v-else type="info" size="small">XYZ</el-tag>
           </template>
         </el-table-column>
@@ -63,6 +63,9 @@
           <template #default="{ row }">
             <span class="font-mono text-xs" v-if="getDataSourceType(row.dataSourceId) === '3dtiles'">
               tileset.json
+            </span>
+            <span class="font-mono text-xs" v-else-if="getDataSourceType(row.dataSourceId) === 'vector'">
+              data.geojson
             </span>
             <span class="font-mono text-xs" v-else>
               {{ row.tileZ }}/{{ row.tileX }}/{{ row.tileY }}

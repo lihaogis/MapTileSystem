@@ -199,6 +199,9 @@ const getTileUrl = (key: string, dataSourceId: string) => {
   if (ds?.type === '3dtiles') {
     return `http://localhost:8080/tiles/${dataSourceId}/tileset.json?key=${key}`
   }
+  if (ds?.type === 'vector') {
+    return `http://localhost:8080/tiles/${dataSourceId}/data.geojson?key=${key}`
+  }
   return `http://localhost:8080/tiles/${dataSourceId}/{z}/{x}/{y}?key=${key}`
 }
 

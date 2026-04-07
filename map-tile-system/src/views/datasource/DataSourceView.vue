@@ -16,7 +16,7 @@
         <el-table-column prop="type" label="类型" width="120">
           <template #default="{ row }">
             <el-tag :type="row.type === 'xyz' ? 'success' : row.type === 'vector' ? 'warning' : 'primary'">
-              {{ row.type === 'vector' ? 'VECTOR' : row.type.toUpperCase() }}
+              {{ row.type === 'vector' ? 'GeoJSON' : row.type.toUpperCase() }}
             </el-tag>
           </template>
         </el-table-column>
@@ -63,29 +63,28 @@
         <el-form-item label="类型" prop="type">
           <el-select v-model="form.type" placeholder="请选择类型" class="w-full" @change="handleTypeChange">
             <el-option label="XYZ 栅格瓦片" value="xyz" />
-            <el-option label="矢量瓦片 (JSON)" value="vector" />
+            <el-option label="GeoJSON 矢量数据" value="vector" />
             <el-option label="3D Tiles" value="3dtiles" />
           </el-select>
         </el-form-item>
-        <el-form-item label="格式" prop="format" v-if="form.type === 'xyz' || form.type === 'vector'">
+        <el-form-item label="格式" prop="format" v-if="form.type === 'xyz'">
           <el-select v-model="form.format" placeholder="请选择格式" class="w-full">
-            <el-option v-if="form.type === 'xyz'" label="PNG" value="png" />
-            <el-option v-if="form.type === 'xyz'" label="JPG" value="jpg" />
-            <el-option v-if="form.type === 'xyz'" label="WebP" value="webp" />
-            <el-option v-if="form.type === 'vector'" label="JSON" value="json" />
+            <el-option label="PNG" value="png" />
+            <el-option label="JPG" value="jpg" />
+            <el-option label="WebP" value="webp" />
           </el-select>
         </el-form-item>
         <el-form-item label="路径" prop="path">
           <div class="flex gap-2">
             <el-input
               v-model="form.path"
-              :placeholder="form.type === '3dtiles' ? '选择包含 tileset.json 的目录' : '选择瓦片目录（包含 {z}/{x}/{y} 结构）'"
+              :placeholder="form.type === 'vector' ? '选择 GeoJSON 文件' : form.type === '3dtiles' ? '选择包含 tileset.json 的目录' : '选择瓦片目录（包含 {z}/{x}/{y} 结构）'"
             />
             <el-button @click="showPathDialog = true">浏览</el-button>
           </div>
           <div class="text-xs text-gray-500 mt-1">
             <span v-if="form.type === 'xyz'">XYZ 瓦片：选择包含 z/x/y 目录结构的根目录</span>
-            <span v-else-if="form.type === 'vector'">矢量瓦片：选择包含 z/x/y 目录结构的根目录（JSON 格式）</span>
+            <span v-else-if="form.type === 'vector'">GeoJSON 矢量：选择 .json 或 .geojson 文件</span>
             <span v-else>3D Tiles：选择包含 tileset.json 文件的目录</span>
           </div>
         </el-form-item>
@@ -115,14 +114,21 @@
     <el-dialog v-model="previewVisible" :title="`预览 - ${previewData?.name}`" width="80%" top="5vh">
       <div class="h-[70vh]">
         <MapPreview2D
-          v-if="previewData?.type === 'xyz' || previewData?.type === 'vector'"
+          v-if="previewData?.type === 'xyz'"
           :url="previewUrl"
           :format="previewData?.format || 'png'"
           :center-lat="previewData?.centerLat"
           :center-lng="previewData?.centerLng"
           :default-zoom="previewData?.defaultZoom"
         />
-        <MapPreview3D v-if="previewData?.type === '3dtiles'" :url="previewUrl" />
+        <MapPreviewGeoJSON
+          v-else-if="previewData?.type === 'vector'"
+          :url="previewUrl"
+          :center-lat="previewData?.centerLat"
+          :center-lng="previewData?.centerLng"
+          :default-zoom="previewData?.defaultZoom"
+        />
+        <MapPreview3D v-else-if="previewData?.type === '3dtiles'" :url="previewUrl" />
       </div>
     </el-dialog>
 
@@ -158,6 +164,7 @@ import request from '@/api/request'
 import type { DataSource } from '@/types'
 import MapPreview2D from '@/components/MapPreview2D.vue'
 import MapPreview3D from '@/components/MapPreview3D.vue'
+import MapPreviewGeoJSON from '@/components/MapPreviewGeoJSON.vue'
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -188,10 +195,10 @@ const previewUrl = computed(() => {
   if (!previewData.value) return ''
   const token = localStorage.getItem('token') || ''
   if (previewData.value.type === 'xyz') {
-    // XYZ 瓦片使用 /api/preview/xyz 路径
     return `/api/preview/xyz/${previewData.value.id}/{z}/{x}/{y}?token=${token}`
+  } else if (previewData.value.type === 'vector') {
+    return `/api/preview/geojson/${previewData.value.id}?token=${token}`
   } else {
-    // 3D Tiles 使用 /api/preview/3dtiles 路径
     return `/api/preview/3dtiles/${previewData.value.id}/tileset.json?token=${token}`
   }
 })
@@ -205,8 +212,8 @@ const formRules: FormRules = {
       message: '请选择格式',
       trigger: 'change',
       validator: (_rule, _value, callback) => {
-        // XYZ 和 vector 类型才需要验证格式
-        if ((form.value.type === 'xyz' || form.value.type === 'vector') && !form.value.format) {
+        // 只有 XYZ 类型才需要验证格式
+        if (form.value.type === 'xyz' && !form.value.format) {
           callback(new Error('请选择格式'))
         } else {
           callback()
@@ -220,15 +227,12 @@ const formRules: FormRules = {
 
 // 处理类型切换
 const handleTypeChange = (type: string) => {
-  if (type === '3dtiles') {
-    // 3D Tiles 不需要格式字段，清空格式值
+  if (type === '3dtiles' || type === 'vector') {
+    // 3D Tiles 和 GeoJSON 不需要格式字段，清空格式值
     form.value.format = ''
   } else if (type === 'xyz' && !form.value.format) {
     // XYZ 类型默认 PNG 格式
     form.value.format = 'png'
-  } else if (type === 'vector' && !form.value.format) {
-    // Vector 类型默认 JSON 格式
-    form.value.format = 'json'
   }
 }
 

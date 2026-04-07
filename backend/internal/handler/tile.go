@@ -37,12 +37,32 @@ func (h *Handler) ServePreviewTile(c *gin.Context) {
 		return
 	}
 
-	// 根据数据源类型设置 Content-Type
-	if dataSource.Type == "vector" && dataSource.Format == "json" {
-		c.Header("Content-Type", "application/json")
+	c.File(tilePath)
+}
+
+// ServePreviewGeoJSON 内部预览 GeoJSON 文件（JWT 认证，不记录统计）
+func (h *Handler) ServePreviewGeoJSON(c *gin.Context) {
+	dataset := c.Param("dataset")
+
+	var dataSource model.DataSource
+	if err := h.db.First(&dataSource, "id = ?", dataset).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "数据源不存在"})
+		return
 	}
 
-	c.File(tilePath)
+	if dataSource.Status != "enabled" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "数据源已禁用"})
+		return
+	}
+
+	if _, err := os.Stat(dataSource.Path); os.IsNotExist(err) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "文件不存在"})
+		return
+	}
+
+	c.Header("Content-Type", "application/json")
+	c.Header("Access-Control-Allow-Origin", "*")
+	c.File(dataSource.Path)
 }
 
 // ServeTile 提供 XYZ 瓦片服务
@@ -82,13 +102,41 @@ func (h *Handler) ServeTile(c *gin.Context) {
 		return
 	}
 
-	// 根据数据源类型设置 Content-Type
-	if dataSource.Type == "vector" && dataSource.Format == "json" {
-		c.Header("Content-Type", "application/json")
-	}
-
 	h.logCall(c, apiKey.ID, dataset, z, x, y, http.StatusOK, startTime)
 	c.File(tilePath)
+}
+
+// ServeGeoJSON 提供 GeoJSON 文件服务（需 API Key 鉴权，记录日志）
+func (h *Handler) ServeGeoJSON(c *gin.Context) {
+	startTime := time.Now()
+	dataset := c.Param("dataset")
+
+	apiKeyValue, _ := c.Get("apiKey")
+	apiKey := apiKeyValue.(model.ApiKey)
+
+	var dataSource model.DataSource
+	if err := h.db.First(&dataSource, "id = ?", dataset).Error; err != nil {
+		h.logCall(c, apiKey.ID, dataset, "", "", "", http.StatusNotFound, startTime)
+		c.JSON(http.StatusNotFound, gin.H{"error": "数据源不存在"})
+		return
+	}
+
+	if dataSource.Status != "enabled" {
+		h.logCall(c, apiKey.ID, dataset, "", "", "", http.StatusForbidden, startTime)
+		c.JSON(http.StatusForbidden, gin.H{"error": "数据源已禁用"})
+		return
+	}
+
+	if _, err := os.Stat(dataSource.Path); os.IsNotExist(err) {
+		h.logCall(c, apiKey.ID, dataset, "", "", "", http.StatusNotFound, startTime)
+		c.JSON(http.StatusNotFound, gin.H{"error": "文件不存在"})
+		return
+	}
+
+	h.logCall(c, apiKey.ID, dataset, "", "", "", http.StatusOK, startTime)
+	c.Header("Content-Type", "application/json")
+	c.Header("Access-Control-Allow-Origin", "*")
+	c.File(dataSource.Path)
 }
 
 // logCall 记录调用日志

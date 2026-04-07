@@ -348,7 +348,14 @@ const loadDirectory = async (path: string) => {
   try {
     const res: any = await request.get('/api/files/directories', { params: { path } })
     if (res.code === 0) {
-      fileList.value = res.data.filter((f: any) => f.isDir)
+      if (form.value.type === 'vector') {
+        // vector 类型：显示目录和 json/geojson 文件
+        fileList.value = res.data.filter((f: any) =>
+          f.isDir || /\.(json|geojson)$/i.test(f.name)
+        )
+      } else {
+        fileList.value = res.data.filter((f: any) => f.isDir)
+      }
       currentPath.value = path
     } else {
       ElMessage.error(res.message || '读取目录失败')
@@ -363,6 +370,10 @@ const loadDirectory = async (path: string) => {
 const handleFileClick = (row: any) => {
   if (row.isDir) {
     loadDirectory(row.path)
+  } else if (form.value.type === 'vector') {
+    // 点击 json/geojson 文件直接选中
+    form.value.path = row.path
+    showPathDialog.value = false
   }
 }
 
@@ -381,7 +392,7 @@ const selectPath = () => {
     form.value.path = currentPath.value
     showPathDialog.value = false
   } else {
-    ElMessage.warning('请选择一个目录')
+    ElMessage.warning(form.value.type === 'vector' ? '请选择一个文件或目录' : '请选择一个目录')
   }
 }
 

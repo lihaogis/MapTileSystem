@@ -8,7 +8,6 @@ import (
 	"map-tile-system/pkg/database"
 	"map-tile-system/pkg/logger"
 	"map-tile-system/pkg/scheduler"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-contrib/cors"
@@ -46,13 +45,11 @@ func main() {
 
 	// CORS 中间件
 	r.Use(cors.New(cors.Config{
-		AllowOriginFunc: func(origin string) bool {
-			return strings.HasPrefix(origin, "http://localhost")
-		},
+		AllowAllOrigins:  true,
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
+		AllowCredentials: false,
 	}))
 
 	// 日志中间件
